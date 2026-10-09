@@ -62,44 +62,47 @@ button.icon:active{background:var(--surface-2)}
 /* log */
 #log{
   flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
-  padding:16px 14px 8px; display:flex; flex-direction:column; gap:12px;
+  padding:0 0 8px;
 }
-.row{display:flex;max-width:100%}
-.row.me{justify-content:flex-end}
-.bub{
-  max-width:min(86%,62ch); padding:9px 13px; border-radius:16px;
-  word-wrap:break-word; overflow-wrap:anywhere; min-width:0;
+.msg{
+  padding:14px 16px;
+  border-bottom:1px solid var(--rule);
+  min-width:0;
 }
-.row.me .bub{background:var(--mine);color:var(--mine-fg);border-bottom-right-radius:5px}
-.row.them .bub{background:var(--surface);border:1px solid var(--rule);border-bottom-left-radius:5px}
-.meta{
-  font:400 .66rem var(--mono); color:var(--fg-dim);
-  margin:5px 2px 0; display:flex; gap:7px; align-items:center;
+.msg:last-child{border-bottom:0}
+.msg.me{background:var(--surface)}
+.who{
+  font:600 .68rem var(--mono); letter-spacing:.1em; text-transform:uppercase;
+  display:flex; gap:9px; align-items:baseline; margin-bottom:7px;
 }
-.row.me .meta{justify-content:flex-end}
-.unverified{color:var(--warn);font-weight:500}
-.empty{margin:auto;text-align:center;color:var(--fg-dim);font-size:.9rem;max-width:34ch;padding:20px}
+.msg.me   .who .tag{color:var(--mine)}
+.msg.them .who .tag{color:var(--fg-dim)}
+.who time{font-weight:400;color:var(--fg-dim);letter-spacing:.04em}
+.body{word-wrap:break-word;overflow-wrap:anywhere;min-width:0;max-width:72ch}
+.msg.me .body{white-space:pre-wrap}
+.unverified{color:var(--warn);font-weight:600;margin-left:auto}
+.empty{text-align:center;color:var(--fg-dim);font-size:.9rem;max-width:34ch;padding:40px 20px;margin:0 auto}
 
-/* markdown inside a bubble */
-.bub > :first-child{margin-top:0}
-.bub > :last-child{margin-bottom:0}
-.bub p{margin:0 0 .6em}
-.bub h1,.bub h2,.bub h3{font-size:1rem;font-weight:600;margin:.8em 0 .35em;line-height:1.3}
-.bub ul,.bub ol{margin:0 0 .6em;padding-left:1.25em}
-.bub li{margin-bottom:.2em}
-.bub code{
+/* markdown inside a section */
+.body > :first-child{margin-top:0}
+.body > :last-child{margin-bottom:0}
+.body p{margin:0 0 .6em}
+.body h1,.body h2,.body h3{font-size:1rem;font-weight:600;margin:.8em 0 .35em;line-height:1.3}
+.body ul,.body ol{margin:0 0 .6em;padding-left:1.25em}
+.body li{margin-bottom:.2em}
+.body code{
   font-family:var(--mono);font-size:.84em;
   background:var(--surface-2);padding:.1em .34em;border-radius:4px;
 }
-.bub pre{
+.body pre{
   background:var(--surface-2);border:1px solid var(--rule);border-radius:8px;
   padding:9px 11px;overflow-x:auto;margin:0 0 .6em;
 }
-.bub pre code{background:none;padding:0;font-size:.8rem;line-height:1.5}
-.bub a{color:var(--accent)}
-.bub blockquote{margin:0 0 .6em;padding-left:.8em;border-left:3px solid var(--rule);color:var(--fg-dim)}
-.bub table{border-collapse:collapse;font-size:.85em;display:block;overflow-x:auto}
-.bub th,.bub td{border:1px solid var(--rule);padding:4px 8px;text-align:left}
+.body pre code{background:none;padding:0;font-size:.8rem;line-height:1.5}
+.body a{color:var(--accent)}
+.body blockquote{margin:0 0 .6em;padding-left:.8em;border-left:3px solid var(--rule);color:var(--fg-dim)}
+.body table{border-collapse:collapse;font-size:.85em;display:block;overflow-x:auto}
+.body th,.body td{border:1px solid var(--rule);padding:4px 8px;text-align:left}
 
 /* composer */
 form{
@@ -227,19 +230,29 @@ function md(src){
 function clock(t){ return new Date(t*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
 
 function draw(m){
-  const row=document.createElement('div');
-  row.className='row '+(m.role==='me'?'me':'them');
-  const bub=document.createElement('div');
-  bub.className='bub';
-  if(m.role==='me') bub.textContent=m.text; else bub.innerHTML=md(m.text);
-  row.appendChild(bub);
-  log.appendChild(row);
-  const meta=document.createElement('div');
-  meta.className='meta '+(m.role==='me'?'me':'them');
-  meta.style.cssText=m.role==='me'?'justify-content:flex-end':'';
-  meta.innerHTML=`<span>${clock(m.t)}</span>`+
-    (m.role==='them'&&!m.ok?'<span class="unverified">⚠ unverified signature</span>':'');
-  log.appendChild(meta);
+  const mine=m.role==='me';
+  const sec=document.createElement('section');
+  sec.className='msg '+(mine?'me':'them');
+
+  const who=document.createElement('div');
+  who.className='who';
+  const tag=document.createElement('span');
+  tag.className='tag'; tag.textContent=mine?'You':'Claude';
+  const t=document.createElement('time');
+  t.textContent=clock(m.t);
+  who.append(tag,t);
+  if(!mine&&!m.ok){
+    const w=document.createElement('span');
+    w.className='unverified'; w.textContent='⚠ unverified';
+    who.appendChild(w);
+  }
+
+  const body=document.createElement('div');
+  body.className='body';
+  if(mine) body.textContent=m.text; else body.innerHTML=md(m.text);
+
+  sec.append(who,body);
+  log.appendChild(sec);
 }
 function repaint(){
   log.innerHTML='';
