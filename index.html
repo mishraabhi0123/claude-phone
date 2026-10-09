@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claude Phone</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f141b" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Claude">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --surface-2:#e7ebf1;
+  --fg:#141a23; --fg-dim:#5c6775; --rule:#d2d9e2;
+  --mine:#1d4ed8; --mine-fg:#ffffff;
+  --accent:#1d4ed8; --warn:#b45309; --ok:#15803d;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f141b; --surface:#1a222c; --surface-2:#232d39;
+    --fg:#dde4ec; --fg-dim:#8d9aa9; --rule:#2c3745;
+    --mine:#3b6fe0; --mine-fg:#ffffff;
+    --accent:#6f9bff; --warn:#e2a449; --ok:#4ade80;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:var(--sans); font-size:16px; line-height:1.5;
+  display:flex; flex-direction:column;
+  overscroll-behavior-y:none;
+}
+
+/* header */
+header{
+  flex:0 0 auto; display:flex; align-items:center; gap:10px;
+  padding:10px 14px; padding-top:calc(10px + env(safe-area-inset-top,0px));
+  background:var(--surface); border-bottom:1px solid var(--rule);
+  position:sticky; top:0; z-index:5;
+}
+header h1{font-size:1rem;font-weight:600;margin:0;flex:1;min-width:0}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--fg-dim);flex:0 0 auto}
+.dot.live{background:var(--ok)}
+.dot.wait{background:var(--warn)}
+.dot.down{background:#dc2626}
+#state{font:500 .72rem var(--mono);color:var(--fg-dim);letter-spacing:.04em}
+button.icon{
+  background:none;border:1px solid var(--rule);color:var(--fg);
+  border-radius:8px;padding:5px 9px;font-size:.95rem;cursor:pointer;
+}
+button.icon:active{background:var(--surface-2)}
+
+/* log */
+#log{
+  flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:16px 14px 8px; display:flex; flex-direction:column; gap:12px;
+}
+.row{display:flex;max-width:100%}
+.row.me{justify-content:flex-end}
+.bub{
+  max-width:min(86%,62ch); padding:9px 13px; border-radius:16px;
+  word-wrap:break-word; overflow-wrap:anywhere; min-width:0;
+}
+.row.me .bub{background:var(--mine);color:var(--mine-fg);border-bottom-right-radius:5px}
+.row.them .bub{background:var(--surface);border:1px solid var(--rule);border-bottom-left-radius:5px}
+.meta{
+  font:400 .66rem var(--mono); color:var(--fg-dim);
+  margin:5px 2px 0; display:flex; gap:7px; align-items:center;
+}
+.row.me .meta{justify-content:flex-end}
+.unverified{color:var(--warn);font-weight:500}
+.empty{margin:auto;text-align:center;color:var(--fg-dim);font-size:.9rem;max-width:34ch;padding:20px}
+
+/* markdown inside a bubble */
+.bub > :first-child{margin-top:0}
+.bub > :last-child{margin-bottom:0}
+.bub p{margin:0 0 .6em}
+.bub h1,.bub h2,.bub h3{font-size:1rem;font-weight:600;margin:.8em 0 .35em;line-height:1.3}
+.bub ul,.bub ol{margin:0 0 .6em;padding-left:1.25em}
+.bub li{margin-bottom:.2em}
+.bub code{
+  font-family:var(--mono);font-size:.84em;
+  background:var(--surface-2);padding:.1em .34em;border-radius:4px;
+}
+.bub pre{
+  background:var(--surface-2);border:1px solid var(--rule);border-radius:8px;
+  padding:9px 11px;overflow-x:auto;margin:0 0 .6em;
+}
+.bub pre code{background:none;padding:0;font-size:.8rem;line-height:1.5}
+.bub a{color:var(--accent)}
+.bub blockquote{margin:0 0 .6em;padding-left:.8em;border-left:3px solid var(--rule);color:var(--fg-dim)}
+.bub table{border-collapse:collapse;font-size:.85em;display:block;overflow-x:auto}
+.bub th,.bub td{border:1px solid var(--rule);padding:4px 8px;text-align:left}
+
+/* composer */
+form{
+  flex:0 0 auto; display:flex; gap:9px; align-items:flex-end;
+  padding:10px 12px; padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  background:var(--surface); border-top:1px solid var(--rule);
+}
+textarea{
+  flex:1 1 auto; min-width:0; resize:none; font:400 16px var(--sans);
+  color:var(--fg); background:var(--bg);
+  border:1px solid var(--rule); border-radius:12px; padding:9px 12px;
+  max-height:9em; line-height:1.4;
+}
+textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+button.send{
+  flex:0 0 auto; background:var(--mine); color:var(--mine-fg);
+  border:0; border-radius:12px; padding:10px 16px;
+  font:600 .9rem var(--sans); cursor:pointer;
+}
+button.send:disabled{opacity:.45}
+
+/* settings */
+dialog{
+  border:1px solid var(--rule); border-radius:14px; padding:0;
+  background:var(--surface); color:var(--fg);
+  width:min(94vw,440px); max-height:86vh;
+}
+dialog::backdrop{background:#0008}
+.dlg{padding:18px;display:flex;flex-direction:column;gap:13px;overflow-y:auto}
+.dlg h2{margin:0;font-size:1.05rem}
+.dlg p{margin:0;font-size:.86rem;color:var(--fg-dim)}
+.dlg label{display:flex;flex-direction:column;gap:5px;font:500 .74rem var(--mono);color:var(--fg-dim);letter-spacing:.04em;text-transform:uppercase}
+.dlg input,.dlg textarea{
+  font:400 .84rem var(--mono); color:var(--fg); background:var(--bg);
+  border:1px solid var(--rule); border-radius:8px; padding:8px 10px; width:100%;
+  text-transform:none; letter-spacing:normal;
+}
+.dlg textarea{min-height:5.5em;resize:vertical}
+.dlg .btns{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.dlg button{
+  border-radius:9px;padding:8px 15px;font:600 .86rem var(--sans);cursor:pointer;
+  border:1px solid var(--rule);background:var(--surface-2);color:var(--fg);
+}
+.dlg button.primary{background:var(--mine);color:var(--mine-fg);border-color:var(--mine)}
+.dlg .err{color:#dc2626;font-size:.82rem;min-height:1.1em}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>Claude Phone</h1>
+  <span id="state">setup</span>
+  <button class="icon" id="gear" aria-label="Settings">&#9881;</button>
+</header>
+
+<div id="log"></div>
+
+<form id="composer">
+  <textarea id="input" rows="1" placeholder="Message Claude…" enterkeyhint="send" autocomplete="off"></textarea>
+  <button class="send" id="send" type="submit" disabled>Send</button>
+</form>
+
+<dialog id="settings">
+  <div class="dlg">
+    <h2>Connection</h2>
+    <p>On your Mac run <code>ntfy-phone config</code> and paste the JSON here. It holds the two topics and the signing key, and is stored only on this device.</p>
+    <label>Config JSON
+      <textarea id="cfgjson" placeholder='{"host":"https://ntfy.sh","in":"cc-in-…","out":"cc-out-…","key":"…"}' spellcheck="false"></textarea>
+    </label>
+    <div class="err" id="cfgerr"></div>
+    <div class="btns">
+      <button type="button" id="clear">Clear chat</button>
+      <button type="button" id="cancel">Cancel</button>
+      <button type="button" class="primary" id="save">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.11/purify.min.js"></script>
+<script>
+'use strict';
+const CFG='cp.cfg', LOG='cp.log', MAX=250;
+const $=id=>document.getElementById(id);
+const log=$('log'), input=$('input'), sendBtn=$('send'), dot=$('dot'), state=$('state');
+
+let cfg=null, ws=null, backoff=1000, lastId=null, seen=new Set(), hist=[], timer=null;
+
+/* ---------- storage ---------- */
+function load(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch{ return d; } }
+function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
+
+/* ---------- crypto ---------- */
+let keyP=null;
+function keyFor(secret){
+  if(!keyP) keyP=crypto.subtle.importKey('raw',new TextEncoder().encode(secret),
+    {name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return keyP;
+}
+async function mac(ts,nonce,text){
+  const k=await keyFor(cfg.key);
+  const sig=await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(`v1\n${ts}\n${nonce}\n${text}`));
+  return [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+}
+function nonce(){ const a=new Uint8Array(8); crypto.getRandomValues(a);
+  return [...a].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+
+const ENV=/^v1 (\d+) (\S+) ([0-9a-f]{16}) ([\s\S]*)$/;
+async function unwrap(body){
+  const m=ENV.exec(body);
+  if(!m) return {text:body, ok:false};
+  const [,ts,n,sig,text]=m;
+  let ok=false;
+  try{ ok = (await mac(ts,n,text))===sig; }catch{}
+  return {text, ok, ts:+ts};
+}
+
+/* ---------- rendering ---------- */
+function md(src){
+  const html=marked.parse(src,{breaks:true,gfm:true});
+  return DOMPurify.sanitize(html,{ADD_ATTR:['target'],FORBID_TAGS:['style','form','input'],FORBID_ATTR:['style']});
+}
+function clock(t){ return new Date(t*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+
+function draw(m){
+  const row=document.createElement('div');
+  row.className='row '+(m.role==='me'?'me':'them');
+  const bub=document.createElement('div');
+  bub.className='bub';
+  if(m.role==='me') bub.textContent=m.text; else bub.innerHTML=md(m.text);
+  row.appendChild(bub);
+  log.appendChild(row);
+  const meta=document.createElement('div');
+  meta.className='meta '+(m.role==='me'?'me':'them');
+  meta.style.cssText=m.role==='me'?'justify-content:flex-end':'';
+  meta.innerHTML=`<span>${clock(m.t)}</span>`+
+    (m.role==='them'&&!m.ok?'<span class="unverified">⚠ unverified signature</span>':'');
+  log.appendChild(meta);
+}
+function repaint(){
+  log.innerHTML='';
+  if(!cfg){ log.innerHTML='<div class="empty">Not connected yet. Open settings and paste the config from <code>ntfy-phone config</code>.</div>'; return; }
+  if(!hist.length){ log.innerHTML='<div class="empty">No messages yet. Say something — it goes straight into the Claude Code session on your Mac.</div>'; return; }
+  hist.forEach(draw);
+  scroll();
+}
+function scroll(){ requestAnimationFrame(()=>{ log.scrollTop=log.scrollHeight; }); }
+function push(m){ hist.push(m); if(hist.length>MAX) hist=hist.slice(-MAX);
+  save(LOG,hist); if(log.querySelector('.empty')) repaint(); else { draw(m); scroll(); } }
+
+/* ---------- status ---------- */
+function status(cls,txt){ dot.className='dot '+cls; state.textContent=txt; }
+
+/* ---------- socket ---------- */
+function connect(){
+  if(!cfg) return;
+  clearTimeout(timer);
+  try{ ws&&ws.close(); }catch{}
+  const base=cfg.host.replace(/^http/,'ws');
+  const url=`${base}/${encodeURIComponent(cfg.out)}/ws?since=${lastId||'6h'}`;
+  status('wait','connecting');
+  let sock;
+  try{ sock=new WebSocket(url); }catch{ return retry(); }
+  ws=sock;
+  sock.onopen=()=>{ backoff=1000; status('live','live'); };
+  sock.onmessage=async e=>{
+    let m; try{ m=JSON.parse(e.data); }catch{ return; }
+    if(m.event==='open'||m.event==='keepalive'){ status('live','live'); return; }
+    if(m.event!=='message'||!m.id||seen.has(m.id)) return;
+    seen.add(m.id); lastId=m.id;
+    const {text,ok}=await unwrap(m.message||'');
+    push({role:'them',text,ok,t:m.time||Math.floor(Date.now()/1000)});
+  };
+  sock.onclose=()=>{ if(ws===sock) retry(); };
+  sock.onerror=()=>{ try{ sock.close(); }catch{} };
+}
+function retry(){
+  status('down','reconnecting');
+  timer=setTimeout(connect,backoff);
+  backoff=Math.min(backoff*2,30000);
+}
+
+/* ---------- sending ---------- */
+async function send(text){
+  const ts=Math.floor(Date.now()/1000), n=nonce();
+  const sig=await mac(ts,n,text);
+  const res=await fetch(`${cfg.host}/${encodeURIComponent(cfg.in)}`,
+    {method:'POST',body:`v1 ${ts} ${n} ${sig} ${text}`});
+  if(!res.ok) throw new Error('ntfy returned '+res.status);
+  push({role:'me',text,ok:true,t:ts});
+}
+
+/* ---------- wiring ---------- */
+function autosize(){ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,144)+'px'; }
+input.addEventListener('input',()=>{ autosize(); sendBtn.disabled=!cfg||!input.value.trim(); });
+input.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey&&window.matchMedia('(min-width:700px)').matches){
+    e.preventDefault(); $('composer').requestSubmit();
+  }
+});
+$('composer').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const text=input.value.trim();
+  if(!text||!cfg) return;
+  input.value=''; autosize(); sendBtn.disabled=true;
+  try{ await send(text); }
+  catch(err){ push({role:'them',text:'**Could not send.** '+err.message,ok:true,t:Math.floor(Date.now()/1000)}); }
+});
+
+$('gear').addEventListener('click',()=>{
+  $('cfgjson').value=cfg?JSON.stringify(cfg,null,2):'';
+  $('cfgerr').textContent='';
+  $('settings').showModal();
+});
+$('cancel').addEventListener('click',()=>$('settings').close());
+$('clear').addEventListener('click',()=>{
+  hist=[]; seen=new Set(); lastId=null; save(LOG,hist); repaint(); $('settings').close();
+});
+$('save').addEventListener('click',()=>{
+  let next;
+  try{ next=JSON.parse($('cfgjson').value); }
+  catch{ $('cfgerr').textContent='That is not valid JSON.'; return; }
+  for(const f of ['host','in','out','key']){
+    if(typeof next[f]!=='string'||!next[f]){ $('cfgerr').textContent='Missing field: '+f; return; }
+  }
+  if(!/^https?:\/\//.test(next.host)){ $('cfgerr').textContent='host must start with http:// or https://'; return; }
+  next.host=next.host.replace(/\/+$/,'');
+  cfg=next; keyP=null; lastId=null; seen=new Set();
+  save(CFG,cfg); $('settings').close();
+  sendBtn.disabled=!input.value.trim();
+  repaint(); connect();
+});
+
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&cfg&&(!ws||ws.readyState>1)){ backoff=1000; connect(); }
+});
+
+/* ---------- boot ---------- */
+cfg=load(CFG,null);
+hist=load(LOG,[]);
+hist.forEach(m=>{ if(m.id) seen.add(m.id); });
+repaint();
+if(cfg){ connect(); sendBtn.disabled=!input.value.trim(); }
+else { status('','setup'); $('settings').showModal(); }
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
