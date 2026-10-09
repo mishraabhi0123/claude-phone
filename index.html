@@ -167,6 +167,7 @@ dialog::backdrop{background:#0008}
   <div class="dlg">
     <h2>Connection</h2>
     <p>On your Mac run <code>ntfy-phone config</code> and paste the JSON here. It holds the two topics and the signing key, and is stored only on this device.</p>
+    <p>Saving also asks for notification permission. That lets replies buzz while this app is open but not in front. When it is closed, the ntfy app wakes you instead.</p>
     <label>Config JSON
       <textarea id="cfgjson" placeholder='{"host":"https://ntfy.sh","in":"cc-in-…","out":"cc-out-…","key":"…"}' spellcheck="false"></textarea>
     </label>
@@ -254,6 +255,32 @@ function push(m){ hist.push(m); if(hist.length>MAX) hist=hist.slice(-MAX);
 /* ---------- status ---------- */
 function status(cls,txt){ dot.className='dot '+cls; state.textContent=txt; }
 
+/* ---------- notifications ----------
+   Only fires while this page is alive but not in front. Chrome on Android
+   keeps it alive for a while after you switch away. Once the app is closed
+   the ntfy app is what wakes you — a web page cannot without a push server. */
+async function notify(title, body, ok){
+  try{
+    if(!('Notification' in window) || Notification.permission!=='granted') return;
+    if(!document.hidden) return;
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if(!reg) return;
+    reg.showNotification(ok ? (title||'Claude') : '⚠ unverified message', {
+      body: body.slice(0,180),
+      icon: 'icon-192.png',
+      badge: 'icon-192.png',
+      tag: 'claude-phone',
+      renotify: true
+    });
+  }catch{}
+}
+async function askNotify(){
+  try{
+    if(!('Notification' in window) || Notification.permission!=='default') return;
+    await Notification.requestPermission();
+  }catch{}
+}
+
 /* ---------- socket ---------- */
 function connect(){
   if(!cfg) return;
@@ -273,6 +300,7 @@ function connect(){
     seen.add(m.id); lastId=m.id;
     const {text,ok}=await unwrap(m.message||'');
     push({role:'them',text,ok,t:m.time||Math.floor(Date.now()/1000)});
+    notify(m.title, text, ok);
   };
   sock.onclose=()=>{ if(ws===sock) retry(); };
   sock.onerror=()=>{ try{ sock.close(); }catch{} };
@@ -329,7 +357,7 @@ $('save').addEventListener('click',()=>{
   if(!/^https?:\/\//.test(next.host)){ $('cfgerr').textContent='host must start with http:// or https://'; return; }
   next.host=next.host.replace(/\/+$/,'');
   cfg=next; keyP=null; lastId=null; seen=new Set();
-  save(CFG,cfg); $('settings').close();
+  save(CFG,cfg); $('settings').close(); askNotify();
   sendBtn.disabled=!input.value.trim();
   repaint(); connect();
 });
