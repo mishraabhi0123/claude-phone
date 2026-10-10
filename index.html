@@ -190,7 +190,7 @@ dialog::backdrop{background:#0008}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.11/purify.min.js"></script>
 <script>
 'use strict';
-const CFG='cp.cfg', LOG='cp.log', MAX=250;
+const CFG='cp.cfg', LOG='cp.log', LAST='cp.last', MAX=250;
 const $=id=>document.getElementById(id);
 const log=$('log'), input=$('input'), sendBtn=$('send'), dot=$('dot'), state=$('state');
 
@@ -331,12 +331,12 @@ function connect(){
     let m; try{ m=JSON.parse(e.data); }catch{ return; }
     if(m.event==='open'||m.event==='keepalive'){ status('live','live'); return; }
     if(m.event!=='message'||!m.id||seen.has(m.id)) return;
-    seen.add(m.id); lastId=m.id;
+    seen.add(m.id); lastId=m.id; save(LAST,lastId);
     const {text,ok}=await unwrap(m.message||'');
     // Receipts ride a side topic so the ntfy app never buzzes for them.
     const ackOf=/^ack:([0-9a-f]{16})$/.exec(text);
     if(ackOf){ if(ok) setStatus(ackOf[1],'read'); return; }
-    push({role:'them',text,ok,t:m.time||Math.floor(Date.now()/1000)});
+    push({role:'them',id:m.id,text,ok,t:m.time||Math.floor(Date.now()/1000)});
     notify(m.title, text, ok);
   };
   sock.onclose=()=>{ if(ws===sock) retry(); };
@@ -386,7 +386,7 @@ $('gear').addEventListener('click',()=>{
 });
 $('cancel').addEventListener('click',()=>$('settings').close());
 $('clear').addEventListener('click',()=>{
-  hist=[]; seen=new Set(); lastId=null; save(LOG,hist); repaint(); $('settings').close();
+  hist=[]; seen=new Set(); lastId=null; save(LOG,hist); save(LAST,null); repaint(); $('settings').close();
 });
 $('save').addEventListener('click',()=>{
   let next;
@@ -397,7 +397,7 @@ $('save').addEventListener('click',()=>{
   }
   if(!/^https?:\/\//.test(next.host)){ $('cfgerr').textContent='host must start with http:// or https://'; return; }
   next.host=next.host.replace(/\/+$/,'');
-  cfg=next; keyP=null; lastId=null; seen=new Set();
+  cfg=next; keyP=null; lastId=null; seen=new Set(); save(LAST,null);
   save(CFG,cfg); $('settings').close(); askNotify();
   sendBtn.disabled=!input.value.trim();
   repaint(); connect();
@@ -410,6 +410,7 @@ document.addEventListener('visibilitychange',()=>{
 /* ---------- boot ---------- */
 cfg=load(CFG,null);
 hist=load(LOG,[]);
+lastId=load(LAST,null);
 hist.forEach(m=>{ if(m.id) seen.add(m.id); });
 repaint();
 if(cfg){ connect(); sendBtn.disabled=!input.value.trim(); }
